@@ -43,21 +43,44 @@ def format_hits(hits, show_score=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("query", help="Search query or theme, e.g. 'God as healer'")
-    parser.add_argument("-k", type=int, default=8, help="Number of passages to keep after retrieval/reranking")
+    parser.add_argument("-k", type=int, default=None, help="Max passages to keep (default: 8, or unlimited when --min-score is used)")
     parser.add_argument("--no-answer", action="store_true", help="Only print passages, skip LLM synthesis")
-    parser.add_argument("--rerank", action="store_true", help="Rerank candidates with the local LLM before keeping top-k")
-    parser.add_argument("--fetch-k", type=int, default=None, help="Candidates to retrieve before reranking (default: 3x -k)")
+    parser.add_argument("--rerank", action="store_true", help="Rerank candidates with the local LLM before keeping results")
+    parser.add_argument("--fetch-k", type=int, default=None, help="Candidates to retrieve before reranking (default: 3x -k, or 60 in --min-score recall mode)")
+    parser.add_argument(
+        "--min-score",
+        type=float,
+        default=None,
+        help="Recall mode (requires --rerank): keep every candidate scoring >= this (0-10) instead of a fixed top-k",
+    )
     args = parser.parse_args()
 
-    fetch_k = args.fetch_k or (args.k * 3 if args.rerank else args.k)
+    if args.min_score is not None and not args.rerank:
+        parser.error("--min-score requires --rerank")
+
+    recall_mode = args.min_score is not None
+    default_k = 8
+    fetch_k = args.fetch_k or (
+        (max((args.k or default_k) * 3, 60) if recall_mode else (args.k or default_k) * 3)
+        if args.rerank
+        else (args.k or default_k)
+    )
     hits = retrieve(args.query, fetch_k)
 
     if args.rerank:
-        hits = rerank_hits(args.query, hits)[: args.k]
-        print("--- Retrieved passages (reranked) ---")
+        hits = rerank_hits(args.query, hits)
+        if recall_mode:
+            hits = [h for h in hits if h["rerank_score"] >= args.min_score]
+            if args.k is not None:
+                hits = hits[: args.k]
+            label = f"--- Retrieved passages (reranked, score >= {args.min_score}, {len(hits)} found) ---"
+        else:
+            hits = hits[: args.k or default_k]
+            label = "--- Retrieved passages (reranked) ---"
+        print(label)
         print(format_hits(hits, show_score=True))
     else:
-        hits = hits[: args.k]
+        hits = hits[: args.k or default_k]
         print("--- Retrieved passages ---")
         print(format_hits(hits))
 

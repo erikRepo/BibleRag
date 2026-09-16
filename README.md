@@ -73,6 +73,7 @@ python -m src.query "God as healer"
 python -m src.query "the Good Shepherd" -k 10
 python -m src.query "sin and forgiveness" --no-answer   # just show passages, skip LLM synthesis
 python -m src.query "God as healer" --rerank            # rerank candidates with the local LLM first
+python -m src.query "God as healer" --rerank --min-score 7 --no-answer   # recall mode: every hit, not just top-k
 ```
 
 `--rerank` fetches a larger candidate pool from the vector store and asks
@@ -80,6 +81,16 @@ the local chat model to score each one's relevance before keeping the
 top `-k`. It measurably improves thematic search quality for modest extra
 latency (a few seconds) — see [RERANKING.md](RERANKING.md) for a worked
 before/after comparison and why it stays fast.
+
+By default `-k` caps results to a fixed count (8), which is fine when you
+want "the best few hits" but hides how many places a theme actually
+appears. Add `--min-score N` (0-10, requires `--rerank`) to switch into
+**recall mode**: instead of a fixed top-k, every candidate scoring `N` or
+higher is kept — so a broad theme like "healing" can return 30+ passages
+instead of being capped at 8. Recall mode also widens the initial vector
+search pool (to 60 candidates by default; override with `--fetch-k`) so
+there's more to find relevant hits among in the first place. You can still
+combine it with `-k` to cap the recall-mode output if it returns too many.
 
 ## Configuration
 
