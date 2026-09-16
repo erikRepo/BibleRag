@@ -52,7 +52,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("query", help="Search query or theme, e.g. 'God as healer'")
     parser.add_argument("-k", type=int, default=None, help="Max passages to keep (default: 8, or unlimited when --min-score is used)")
-    parser.add_argument("--no-answer", action="store_true", help="Only print passages, skip LLM synthesis")
+    parser.add_argument("--answer", action="store_true", help="Also ask the local LLM to synthesize a summary (default: just list the matched passages)")
     parser.add_argument("--rerank", action="store_true", help="Rerank candidates with the local LLM before keeping results")
     parser.add_argument("--fetch-k", type=int, default=None, help="Candidates to retrieve before reranking (default: 3x -k, or 60 in --min-score recall mode)")
     parser.add_argument(
@@ -98,7 +98,7 @@ def main():
         print("--- Retrieved passages ---")
         print(format_hits(hits))
 
-    if not args.no_answer:
+    if args.answer:
         print("\n--- Answer ---")
         context = format_hits(hits)
         if args.lang == "fi":

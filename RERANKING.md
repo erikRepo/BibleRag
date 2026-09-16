@@ -28,7 +28,7 @@ Usage: add `--rerank` to `python -m src.query`.
 
 ## Comparison 1: "God as healer" (k=6)
 
-**Vector search only** (`python -m src.query "God as healer" -k 6 --no-answer`):
+**Vector search only** (`python -m src.query "God as healer" -k 6`):
 
 1. Matthew 15:28-31 — general healing miracles, deaf/lame/blind
 2. James 5:13-16 — anointing with oil, prayer for the sick

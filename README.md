@@ -2,11 +2,11 @@
 
 A small, fully local Retrieval-Augmented-Generation (RAG) system for
 thematic Bible search — e.g. asking "where does the Bible describe God as
-a healer?" and getting back grounded verses plus a synthesized answer,
-with everything running on your own machine.
+a healer?" and getting back a list of the matching verses, with everything
+running on your own machine.
 
 No API keys, no cloud services. The Bible text, the embeddings, and the
-answer-generating LLM all run locally via [Ollama](https://ollama.com).
+optional answer-generating LLM all run locally via [Ollama](https://ollama.com).
 
 ## How it works
 
@@ -14,9 +14,11 @@ answer-generating LLM all run locally via [Ollama](https://ollama.com).
    it into small sliding windows of verses, embeds each chunk locally, and
    stores the embeddings in a local [Chroma](https://www.trychroma.com/)
    vector database on disk.
-2. `src/query.py` embeds your question/theme the same way, retrieves the
-   most semantically similar passages from Chroma, and (optionally) asks a
-   local LLM to summarize what those passages say, with citations.
+2. `src/query.py` embeds your question/theme the same way and retrieves the
+   most semantically similar passages from Chroma. By default it just
+   lists the matched verses — no LLM commentary or interpretation, just
+   "these are the passages, here's what they say." Add `--answer` if you
+   also want a local LLM to write a cited summary on top.
 
 Because retrieval is semantic (not keyword search), a query like
 "God as healer" surfaces passages that never contain the word "healer" —
@@ -66,24 +68,25 @@ Build the vector index (only needed once per Bible file / chunking config):
 python -m src.ingest
 ```
 
-Ask a question:
+Ask a question — by default this just lists the matched passages:
 
 ```bash
 python -m src.query "God as healer"
 python -m src.query "the Good Shepherd" -k 10
-python -m src.query "sin and forgiveness" --no-answer   # just show passages, skip LLM synthesis
-python -m src.query "God as healer" --rerank            # rerank candidates with the local LLM first
-python -m src.query "God as healer" --rerank --min-score 7 --no-answer   # recall mode: every hit, not just top-k
-python -m src.query "Jumala parantajana" --lang fi --rerank -k 5         # ask and get the answer in Finnish
+python -m src.query "God as healer" --rerank             # rerank candidates with the local LLM first
+python -m src.query "God as healer" --rerank --min-score 7   # recall mode: every hit, not just top-k
+python -m src.query "Jumala parantajana" --lang fi --rerank -k 5   # search in Finnish
+python -m src.query "God as healer" --rerank --answer    # also ask the LLM for a cited summary
 ```
 
 ### Asking in another language
 
 The Bible text and embedding model here are English-only, so `--lang fi`
 translates your Finnish query to English before searching (retrieval and
-reranking always run in English against the indexed text), then asks the
-chat model to write the final answer in Finnish, citing the same
-references. Translation quality needed a few-shot prompt to be reliable
+reranking always run in English against the indexed text). Combined with
+`--answer`, it also asks the chat model to write that summary in Finnish,
+citing the same references. Translation quality needed a few-shot prompt
+to be reliable
 for short theological phrases — see the comments in `src/translate.py`
 and `src/ollama_client.py` if you want the details (short version: a
 thinking model can either mistranslate two-word phrases with thinking
