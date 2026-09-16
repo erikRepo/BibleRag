@@ -1,0 +1,14 @@
+# Maps a --lang code to a Bible XML filename inside BIBLE_REPO_PATH
+# (see .env: BIBLE_REPO_PATH), using the same <bible><testament><book>
+# <chapter><verse> layout as https://github.com/ - "Holy-Bible-XML-Format".
+#
+# Search always runs in English against the indexed BIBLE_XML (see
+# .env); this file only controls which translation's verse text is
+# displayed/quoted when you pass --lang.
+#
+# Add more languages by cloning that repo yourself and pointing at any
+# file in it, e.g. de = "GermanSCH2000Bible.xml".
+
+[languages]
+en = "EnglishKJBible.xml"
+fi = "FinnishBible.xml"

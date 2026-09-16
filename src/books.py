@@ -19,3 +19,27 @@ BOOK_NAMES = {
     59: "James", 60: "1 Peter", 61: "2 Peter", 62: "1 John", 63: "2 John",
     64: "3 John", 65: "Jude", 66: "Revelation",
 }
+
+BOOK_NAMES_FI = {
+    1: "1. Mooseksen kirja", 2: "2. Mooseksen kirja", 3: "3. Mooseksen kirja",
+    4: "4. Mooseksen kirja", 5: "5. Mooseksen kirja", 6: "Joosua", 7: "Tuomarien kirja",
+    8: "Ruut", 9: "1. Samuelin kirja", 10: "2. Samuelin kirja", 11: "1. Kuningasten kirja",
+    12: "2. Kuningasten kirja", 13: "1. Aikakirja", 14: "2. Aikakirja", 15: "Esra",
+    16: "Nehemia", 17: "Ester", 18: "Job", 19: "Psalmit", 20: "Sananlaskut",
+    21: "Saarnaaja", 22: "Laulujen laulu", 23: "Jesaja", 24: "Jeremia",
+    25: "Valitusvirret", 26: "Hesekiel", 27: "Daniel", 28: "Hoosea", 29: "Jooel",
+    30: "Aamos", 31: "Obadja", 32: "Joona", 33: "Miika", 34: "Nahum", 35: "Habakuk",
+    36: "Sefanja", 37: "Haggai", 38: "Sakarja", 39: "Malakia",
+    40: "Matteus", 41: "Markus", 42: "Luukas", 43: "Johannes", 44: "Apostolien teot",
+    45: "Roomalaiskirje", 46: "1. Korinttilaiskirje", 47: "2. Korinttilaiskirje",
+    48: "Galatalaiskirje", 49: "Efesolaiskirje", 50: "Filippiläiskirje",
+    51: "Kolossalaiskirje", 52: "1. Tessalonikalaiskirje", 53: "2. Tessalonikalaiskirje",
+    54: "1. Timoteuskirje", 55: "2. Timoteuskirje", 56: "Titukselle", 57: "Filemonille",
+    58: "Heprealaiskirje", 59: "Jaakobin kirje", 60: "1. Pietarin kirje",
+    61: "2. Pietarin kirje", 62: "1. Johanneksen kirje", 63: "2. Johanneksen kirje",
+    64: "3. Johanneksen kirje", 65: "Juudaksen kirje", 66: "Ilmestyskirja",
+}
+
+BOOK_NAMES_BY_LANG = {"en": BOOK_NAMES, "fi": BOOK_NAMES_FI}
+
+BOOK_NUMBERS_BY_NAME = {name: num for num, name in BOOK_NAMES.items()}

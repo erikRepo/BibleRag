@@ -52,6 +52,7 @@ def chunk_verses(verses, size: int, overlap: int):
                 {
                     "id": f"{book_num}-{chapter_num}-{window[0]['verse']}-{window[-1]['verse']}",
                     "book": window[0]["book"],
+                    "book_num": book_num,
                     "chapter": chapter_num,
                     "verse_start": window[0]["verse"],
                     "verse_end": window[-1]["verse"],
@@ -85,6 +86,7 @@ def main():
             metadatas=[
                 {
                     "book": c["book"],
+                    "book_num": c["book_num"],
                     "chapter": c["chapter"],
                     "verse_start": c["verse_start"],
                     "verse_end": c["verse_end"],

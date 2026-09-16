@@ -6,6 +6,8 @@ import argparse
 import chromadb
 
 from . import config
+from .books import BOOK_NAMES_BY_LANG
+from .lang_lookup import localized_text
 from .ollama_client import chat, embed
 from .rerank import rerank as rerank_hits
 from .translate import to_english
@@ -36,15 +38,25 @@ def retrieve(query: str, k: int):
     return hits
 
 
-def format_hits(hits, show_score=False):
+def format_hits(hits, show_score=False, lang="en"):
+    """lang controls display only: book names and verse text are looked
+    up in that translation (see src/lang_lookup.py) while search/rerank
+    always ran in English against the indexed text."""
+    book_names = BOOK_NAMES_BY_LANG.get(lang, BOOK_NAMES_BY_LANG["en"])
     lines = []
     for h in hits:
         m = h["meta"]
-        ref = f"{m['book']} {m['chapter']}:{m['verse_start']}-{m['verse_end']}"
+        text = h["text"]
+        if lang != "en":
+            translated = localized_text(lang, m["book_num"], m["chapter"], m["verse_start"], m["verse_end"])
+            if translated:
+                text = translated
+        book_name = book_names.get(m["book_num"], m["book"])
+        ref = f"{book_name} {m['chapter']}:{m['verse_start']}-{m['verse_end']}"
         prefix = f"[{ref}]"
         if show_score and "rerank_score" in h:
             prefix = f"[{ref} | score={h['rerank_score']:.1f}]"
-        lines.append(f"{prefix} {h['text']}")
+        lines.append(f"{prefix} {text}")
     return "\n".join(lines)
 
 
@@ -92,19 +104,19 @@ def main():
             hits = hits[: args.k or default_k]
             label = "--- Retrieved passages (reranked) ---"
         print(label)
-        print(format_hits(hits, show_score=True))
+        print(format_hits(hits, show_score=True, lang=args.lang))
     else:
         hits = hits[: args.k or default_k]
         print("--- Retrieved passages ---")
-        print(format_hits(hits))
+        print(format_hits(hits, lang=args.lang))
 
     if args.answer:
         print("\n--- Answer ---")
-        context = format_hits(hits)
+        context = format_hits(hits, lang=args.lang)
         if args.lang == "fi":
             system_prompt = SYSTEM_PROMPT_FI
             user_prompt = (
-                f"Aihe/kysymys: {args.query}\n\nRaamatunkohdat (englanniksi):\n{context}\n\n"
+                f"Aihe/kysymys: {args.query}\n\nRaamatunkohdat:\n{context}\n\n"
                 "Tiivistä suomeksi mitä nämä kohdat kertovat aiheesta, viitaten kohtiin."
             )
             # think=False: with a handful of passages, qwen3.5's Finnish
@@ -124,4 +136,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except FileNotFoundError as e:
+        raise SystemExit(f"Error: {e}")

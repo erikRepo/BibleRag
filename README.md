@@ -42,6 +42,10 @@ e.g. Exodus 15:26 or Isaiah 53:5.
   book numbers 1-66 in standard order. A public-domain translation such as
   the King James Version works well for local LLMs (simpler, unambiguous
   English compared to modern paraphrases).
+- Optional, only needed for `--lang`: a local clone of that same
+  [Holy-Bible-XML-Format](https://github.com/) repo, which ships dozens of
+  translations in other languages using the identical XML layout. Point
+  `BIBLE_REPO_PATH` at it (see `.env.example`).
 
 ## Setup
 
@@ -82,11 +86,23 @@ python -m src.query "God as healer" --rerank --answer    # also ask the LLM for 
 ### Asking in another language
 
 The Bible text and embedding model here are English-only, so `--lang fi`
-translates your Finnish query to English before searching (retrieval and
-reranking always run in English against the indexed text). Combined with
-`--answer`, it also asks the chat model to write that summary in Finnish,
-citing the same references. Translation quality needed a few-shot prompt
-to be reliable
+translates your Finnish query to English before searching — retrieval and
+reranking always run in English against the indexed text (`BIBLE_XML`).
+The *displayed* verse text and book names, though, are looked up by
+book/chapter/verse number in an actual Finnish translation (default:
+`FinnishBible.xml`, the public-domain 1933/38 Kirkkoraamattu) from your
+`BIBLE_REPO_PATH` clone — so what you read is a real Finnish translation,
+not a machine translation of the English verse. Combined with `--answer`,
+the chat model also writes its summary in Finnish, quoting that same
+Finnish text.
+
+`languages.toml` maps each `--lang` code to a filename inside
+`BIBLE_REPO_PATH`; add a language by cloning
+[Holy-Bible-XML-Format](https://github.com/) yourself (it's not vendored
+into this repo — dozens of translations, no need to duplicate them all
+here) and adding a line, e.g. `de = "GermanSCH2000Bible.xml"`.
+
+Translating the *query itself* needed a few-shot prompt to be reliable
 for short theological phrases — see the comments in `src/translate.py`
 and `src/ollama_client.py` if you want the details (short version: a
 thinking model can either mistranslate two-word phrases with thinking
@@ -123,6 +139,7 @@ All configuration lives in `.env` (copy from `.env.example`):
 | `CHROMA_DIR` | Where the vector store is persisted | `./data/chroma` |
 | `CHUNK_SIZE` | Verses per chunk | `4` |
 | `CHUNK_OVERLAP` | Verse overlap between consecutive chunks | `1` |
+| `BIBLE_REPO_PATH` | Local clone of Holy-Bible-XML-Format, for `--lang` display translations | `~/git/Holy-Bible-XML-Format` |
 
 ## Notes / possible next steps
 
