@@ -72,7 +72,14 @@ Ask a question:
 python -m src.query "God as healer"
 python -m src.query "the Good Shepherd" -k 10
 python -m src.query "sin and forgiveness" --no-answer   # just show passages, skip LLM synthesis
+python -m src.query "God as healer" --rerank            # rerank candidates with the local LLM first
 ```
+
+`--rerank` fetches a larger candidate pool from the vector store and asks
+the local chat model to score each one's relevance before keeping the
+top `-k`. It measurably improves thematic search quality for modest extra
+latency (a few seconds) — see [RERANKING.md](RERANKING.md) for a worked
+before/after comparison and why it stays fast.
 
 ## Configuration
 

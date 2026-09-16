@@ -17,7 +17,7 @@ def embed_many(texts: list[str]) -> list[list[float]]:
     return [embed(t) for t in texts]
 
 
-def chat(system: str, user: str) -> str:
+def chat(system: str, user: str, think: bool = True) -> str:
     resp = requests.post(
         f"{config.OLLAMA_HOST}/api/chat",
         json={
@@ -27,6 +27,7 @@ def chat(system: str, user: str) -> str:
                 {"role": "user", "content": user},
             ],
             "stream": False,
+            "think": think,
         },
         timeout=300,
     )
