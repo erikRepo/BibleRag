@@ -25,11 +25,13 @@ SYSTEM_PROMPT_FI = (
     "sano niin."
 )
 
+OT_MAX_BOOK_NUM = 39  # 1=Genesis..39=Malachi are Old Testament, 40=Matthew..66=Revelation are New
 
-def retrieve(query: str, k: int):
+
+def retrieve(query: str, k: int, where: dict | None = None):
     client = chromadb.PersistentClient(path=config.CHROMA_DIR)
     collection = client.get_collection("bible")
-    result = collection.query(query_embeddings=[embed(query)], n_results=k)
+    result = collection.query(query_embeddings=[embed(query)], n_results=k, where=where)
     hits = []
     for doc, meta, dist in zip(
         result["documents"][0], result["metadatas"][0], result["distances"][0]
@@ -38,11 +40,48 @@ def retrieve(query: str, k: int):
     return hits
 
 
-def format_hits(hits, show_score=False, lang="en"):
+def retrieve_both_testaments(query: str, k_per_testament: int):
+    """Query the Old and New Testament halves of the collection
+    separately (via a book_num metadata filter) instead of one pooled
+    query. A single pooled query can end up dominated by one testament
+    when its vocabulary happens to sit closer to the query in embedding
+    space - by the time you'd notice and filter afterwards, the other
+    testament's candidates were never fetched at all."""
+    old = retrieve(query, k_per_testament, where={"book_num": {"$lte": OT_MAX_BOOK_NUM}})
+    new = retrieve(query, k_per_testament, where={"book_num": {"$gte": OT_MAX_BOOK_NUM + 1}})
+    return old, new
+
+
+def split_by_testament(hits):
+    old = [h for h in hits if h["meta"]["book_num"] <= OT_MAX_BOOK_NUM]
+    new = [h for h in hits if h["meta"]["book_num"] > OT_MAX_BOOK_NUM]
+    return old, new
+
+
+def balance_take(old_hits, new_hits, k):
+    """Take up to k hits split as evenly as possible between the two
+    (each already ordered by relevance), spilling over into whichever
+    side has more candidates if the other comes up short."""
+    n_old = (k + 1) // 2
+    n_new = k - n_old
+    picked_old = old_hits[:n_old]
+    picked_new = new_hits[:n_new]
+    deficit = (n_old - len(picked_old)) + (n_new - len(picked_new))
+    if deficit > 0:
+        leftover = old_hits[len(picked_old):] + new_hits[len(picked_new):]
+        return picked_old + picked_new + leftover[:deficit]
+    return picked_old + picked_new
+
+
+TESTAMENT_LABELS = {"en": ("OT", "NT"), "fi": ("VT", "UT")}
+
+
+def format_hits(hits, show_score=False, lang="en", show_testament=False):
     """lang controls display only: book names and verse text are looked
     up in that translation (see src/lang_lookup.py) while search/rerank
     always ran in English against the indexed text."""
     book_names = BOOK_NAMES_BY_LANG.get(lang, BOOK_NAMES_BY_LANG["en"])
+    ot_label, nt_label = TESTAMENT_LABELS.get(lang, TESTAMENT_LABELS["en"])
     lines = []
     for h in hits:
         m = h["meta"]
@@ -53,9 +92,12 @@ def format_hits(hits, show_score=False, lang="en"):
                 text = translated
         book_name = book_names.get(m["book_num"], m["book"])
         ref = f"{book_name} {m['chapter']}:{m['verse_start']}-{m['verse_end']}"
-        prefix = f"[{ref}]"
+        tags = []
+        if show_testament:
+            tags.append(ot_label if m["book_num"] <= OT_MAX_BOOK_NUM else nt_label)
         if show_score and "rerank_score" in h:
-            prefix = f"[{ref} | score={h['rerank_score']:.1f}]"
+            tags.append(f"score={h['rerank_score']:.1f}")
+        prefix = f"[{ref} | {' | '.join(tags)}]" if tags else f"[{ref}]"
         lines.append(f"{prefix} {text}")
     return "\n".join(lines)
 
@@ -74,6 +116,11 @@ def main():
         help="Recall mode (requires --rerank): keep every candidate scoring >= this (0-10) instead of a fixed top-k",
     )
     parser.add_argument("--lang", choices=["en", "fi"], default="en", help="Language of your query and the answer (retrieval always runs in English)")
+    parser.add_argument(
+        "--both-testaments",
+        action="store_true",
+        help="Query the Old and New Testament separately so both are represented, instead of one pooled search that can end up dominated by one testament",
+    )
     args = parser.parse_args()
 
     if args.min_score is not None and not args.rerank:
@@ -91,24 +138,44 @@ def main():
         if args.rerank
         else (args.k or default_k)
     )
-    hits = retrieve(search_query, fetch_k)
+
+    if args.both_testaments:
+        old_hits, new_hits = retrieve_both_testaments(search_query, fetch_k)
+        hits = old_hits + new_hits
+    else:
+        hits = retrieve(search_query, fetch_k)
 
     if args.rerank:
         hits = rerank_hits(search_query, hits)
         if recall_mode:
             hits = [h for h in hits if h["rerank_score"] >= args.min_score]
             if args.k is not None:
-                hits = hits[: args.k]
+                if args.both_testaments:
+                    old_sorted, new_sorted = split_by_testament(hits)
+                    hits = balance_take(old_sorted, new_sorted, args.k)
+                else:
+                    hits = hits[: args.k]
             label = f"--- Retrieved passages (reranked, score >= {args.min_score}, {len(hits)} found) ---"
         else:
-            hits = hits[: args.k or default_k]
+            k = args.k or default_k
+            if args.both_testaments:
+                old_sorted, new_sorted = split_by_testament(hits)
+                hits = balance_take(old_sorted, new_sorted, k)
+            else:
+                hits = hits[:k]
             label = "--- Retrieved passages (reranked) ---"
         print(label)
-        print(format_hits(hits, show_score=True, lang=args.lang))
+        print(format_hits(hits, show_score=True, lang=args.lang, show_testament=args.both_testaments))
     else:
-        hits = hits[: args.k or default_k]
+        k = args.k or default_k
+        if args.both_testaments:
+            # each side already sorted by relevance (ascending distance) from its own query
+            old_sorted, new_sorted = split_by_testament(hits)
+            hits = balance_take(old_sorted, new_sorted, k)
+        else:
+            hits = hits[:k]
         print("--- Retrieved passages ---")
-        print(format_hits(hits, lang=args.lang))
+        print(format_hits(hits, lang=args.lang, show_testament=args.both_testaments))
 
     if args.answer:
         print("\n--- Answer ---")

@@ -81,7 +81,23 @@ python -m src.query "God as healer" --rerank             # rerank candidates wit
 python -m src.query "God as healer" --rerank --min-score 7   # recall mode: every hit, not just top-k
 python -m src.query "Jumala parantajana" --lang fi --rerank -k 5   # search in Finnish
 python -m src.query "God as healer" --rerank --answer    # also ask the LLM for a cited summary
+python -m src.query "God as healer" --rerank --both-testaments -k 8   # force an OT+NT mix
 ```
+
+### Balancing Old vs. New Testament results
+
+A pooled vector search can end up dominated by one testament — much of
+the New Testament's healing/shepherd/grace vocabulary sits closer to
+common English search phrasing than the Old Testament's does, so a
+theme can return all-NT results even when the Old Testament has
+relevant passages too. `--both-testaments` queries each testament
+separately (via a `book_num` metadata filter in Chroma) so both are
+actually fetched as candidates, not just missing from a single skewed
+pool. With `-k`, the final results are split as evenly as possible
+between the two (spilling into the other side if one comes up short);
+in `--min-score` recall mode it just widens what gets a chance to pass
+the threshold. Passages are tagged `OT`/`NT` (`VT`/`UT` for `--lang fi`)
+in the output either way.
 
 ### Asking in another language
 
