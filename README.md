@@ -8,6 +8,10 @@ running on your own machine.
 No API keys, no cloud services. The Bible text, the embeddings, and the
 optional answer-generating LLM all run locally via [Ollama](https://ollama.com).
 
+New to RAG, or want the full pipeline explained end to end with
+diagrams (what each flag does, and whether it involves the LLM)? See
+[GUIDE.md](GUIDE.md).
+
 ## How it works
 
 1. `src/ingest.py` parses a Bible XML file (book → chapter → verse), chunks
