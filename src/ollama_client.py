@@ -17,7 +17,11 @@ def embed_many(texts: list[str]) -> list[list[float]]:
     return [embed(t) for t in texts]
 
 
-def chat(system: str, user: str, think: bool = True) -> str:
+def chat(system: str, user: str, think: bool = True, num_predict: int = 4096) -> str:
+    """num_predict defaults generously because thinking models spend a
+    chunk of the token budget on <think> reasoning before any answer
+    text - too low a default silently truncates the response to an
+    empty string once the model runs out of budget mid-thought."""
     resp = requests.post(
         f"{config.OLLAMA_HOST}/api/chat",
         json={
@@ -28,6 +32,7 @@ def chat(system: str, user: str, think: bool = True) -> str:
             ],
             "stream": False,
             "think": think,
+            "options": {"num_predict": num_predict},
         },
         timeout=300,
     )

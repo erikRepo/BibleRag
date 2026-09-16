@@ -74,7 +74,22 @@ python -m src.query "the Good Shepherd" -k 10
 python -m src.query "sin and forgiveness" --no-answer   # just show passages, skip LLM synthesis
 python -m src.query "God as healer" --rerank            # rerank candidates with the local LLM first
 python -m src.query "God as healer" --rerank --min-score 7 --no-answer   # recall mode: every hit, not just top-k
+python -m src.query "Jumala parantajana" --lang fi --rerank -k 5         # ask and get the answer in Finnish
 ```
+
+### Asking in another language
+
+The Bible text and embedding model here are English-only, so `--lang fi`
+translates your Finnish query to English before searching (retrieval and
+reranking always run in English against the indexed text), then asks the
+chat model to write the final answer in Finnish, citing the same
+references. Translation quality needed a few-shot prompt to be reliable
+for short theological phrases — see the comments in `src/translate.py`
+and `src/ollama_client.py` if you want the details (short version: a
+thinking model can either mistranslate two-word phrases with thinking
+off, or burn its whole token budget "thinking" about them with thinking
+on and never answer — few-shot examples fixed it without needing
+`think=True`).
 
 `--rerank` fetches a larger candidate pool from the vector store and asks
 the local chat model to score each one's relevance before keeping the
